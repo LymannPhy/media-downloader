@@ -107,10 +107,10 @@ public class MainApplication {
             }
 
             // Ask the user if they want to continue
-            System.out.print("Do you want to continue? (yes/no): ");
+            System.out.print("Do you want to continue? (y/n): ");
             String continueInput = scanner.next();
 
-            if (!continueInput.equalsIgnoreCase("yes")) {
+            if (!continueInput.equalsIgnoreCase("y")) {
                 break;
             }
         }
