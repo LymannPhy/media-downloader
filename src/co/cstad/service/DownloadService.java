@@ -1,4 +1,4 @@
-package co.istad.service;
+package co.cstad.service;
 
 import java.io.IOException;
 

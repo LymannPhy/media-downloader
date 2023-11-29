@@ -1,7 +1,7 @@
-package co.istad.controller;
+package co.cstad.controller;
 
-import co.istad.service.DownloadService;
-import co.istad.service.DownloadServiceImp;
+import co.cstad.service.DownloadService;
+import co.cstad.service.DownloadServiceImp;
 
 public class DownloadController {
     private final DownloadService downloadService;

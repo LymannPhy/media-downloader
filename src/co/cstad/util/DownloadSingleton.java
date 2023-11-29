@@ -1,7 +1,7 @@
-package co.istad.util;
+package co.cstad.util;
 
-import co.istad.controller.DownloadController;
-import co.istad.service.DownloadServiceImp;
+import co.cstad.controller.DownloadController;
+import co.cstad.service.DownloadServiceImp;
 
 import java.util.Scanner;
 

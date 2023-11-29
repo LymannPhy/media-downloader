@@ -1,5 +1,5 @@
-import co.istad.controller.DownloadController;
-import co.istad.util.DownloadSingleton;
+import co.cstad.controller.DownloadController;
+import co.cstad.util.DownloadSingleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
