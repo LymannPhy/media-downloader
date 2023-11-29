@@ -1,4 +1,4 @@
-package co.istad.controller;
+package co.cstad.controller;
 
 public class MenuController {
 }

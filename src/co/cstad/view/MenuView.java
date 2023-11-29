@@ -1,4 +1,4 @@
-package co.istad.view;
+package co.cstad.view;
 
 public class MenuView {
 }
