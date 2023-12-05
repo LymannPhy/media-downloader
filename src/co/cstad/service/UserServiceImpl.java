@@ -32,10 +32,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean authenticateUser(String username, String password) {
         User user = userDao.getUserByUsername(username);
-        if(user.getId() != null) {
+        if(user != null) {
             storage.setId(user.getId());
         }
-        return user.getPassword().equals(password);
+        return user != null && user.getPassword().equals(password);
     }
 
     @Override
