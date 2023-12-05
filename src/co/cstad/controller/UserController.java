@@ -2,12 +2,18 @@ package co.cstad.controller;
 
 import co.cstad.model.User;
 import co.cstad.service.UserService;
+import co.cstad.service.UserServiceImpl;
+import co.cstad.storage.Storage;
+import co.cstad.util.DownloadSingleton;
+import co.cstad.view.UserView;
 
 public class UserController {
-    private UserService userService;
+    private final UserService userService;
+    private final Storage storage;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public UserController() {
+        userService = new UserServiceImpl();
+        storage = DownloadSingleton.storage();
     }
 
     public boolean authenticateUser(String username, String password) {

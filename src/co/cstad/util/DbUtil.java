@@ -5,12 +5,22 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DbUtil {
-    public static Connection getConnection() throws SQLException {
-        // Provide your database connection details
-        String url = "jdbc:postgresql://localhost:5432/mydatabase";
-        String username = "postgres";
-        String password = "Lymann-2";
-
-        return DriverManager.getConnection(url, username, password);
+    private static Connection connection;
+    public static Connection getConnection(){
+        if(connection == null){
+            try {
+                try {
+                    Class.forName("org.postgresql.Driver");
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                String password = "092728853";
+                String username = "postgres";
+                connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/media-downloader", username, password);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return connection;
     }
 }

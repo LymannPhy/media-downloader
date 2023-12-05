@@ -1,15 +1,15 @@
 package co.cstad.controller;
 
 import co.cstad.service.DownloadService;
-import co.cstad.service.DownloadServiceImp;
+import co.cstad.service.DownloadServiceImpl;
 
 public class DownloadController {
     private final DownloadService downloadService;
     
     public DownloadController() {
-        downloadService = new DownloadServiceImp();
+        downloadService = new DownloadServiceImpl();
     }
-    public void downloadMedia(String mediaUrl, String format) throws Exception {
-        downloadService.downloadMedia(mediaUrl, format);
+    public void downloadMedia(String mediaUrl, String outputDirectory, String format) throws Exception {
+        downloadService.downloadMedia(mediaUrl, outputDirectory, format);
     }
 }
