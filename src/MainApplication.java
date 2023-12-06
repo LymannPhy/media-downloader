@@ -1,31 +1,25 @@
-import co.cstad.controller.DownloadController;
-import co.cstad.controller.MenuController;
 import co.cstad.util.CategorySeeder;
 import co.cstad.util.DownloadSingleton;
 
 import java.util.*;
 
+import co.cstad.util.FolderSeeder;
 import co.cstad.view.UserView;
-import co.cstad.view.MenuView;
 
 public class MainApplication {
     private final Scanner scanner;
-//    private final DownloadController downloadController;
-//    private final MenuController menuController;
     private final CategorySeeder categorySeeder;
+    private final FolderSeeder folderSeeder;
     private final UserView userView;
-//    private final MenuView menuView;
     public MainApplication() {
         scanner = DownloadSingleton.scanner();
-//        downloadController = DownloadSingleton.downloadController();
-//        menuController = DownloadSingleton.menuController();
         categorySeeder = DownloadSingleton.categorySeeder();
         categorySeeder.categorySeeder();
+        folderSeeder = DownloadSingleton.folderSeeder();
+        folderSeeder.folderSeeder();
         userView = DownloadSingleton.userView();
-//        menuView = DownloadSingleton.menuView();
     }
 
-    String outputDirectory = "";
     public void run() {
         int userInput;
 
@@ -56,6 +50,7 @@ public class MainApplication {
                 case 2 -> {
                     userView.showLoginMenu();
                     categorySeeder.categorySeeder();
+                    folderSeeder.folderSeeder();
                 }
                 case 3 -> {
                     System.out.println("Existing the application. Goodbye!");
@@ -67,13 +62,12 @@ public class MainApplication {
                 }
             }
 
-            // Ask the user if they want to continue
-//            System.out.print("Do you want to continue? (y/n): ");
-//            String continueInput = scanner.next();
-//
-//            if (!continueInput.equalsIgnoreCase("y")) {
-//                break;
-//            }
+            System.out.print("Do you want to continue? (y/n): ");
+            String continueInput = scanner.next();
+
+            if (!continueInput.equalsIgnoreCase("y")) {
+                break;
+            }
         }
 //        String option;
 //        int concurrentDownloads = 1;
@@ -193,9 +187,4 @@ public class MainApplication {
     public static void main(String[] args) {
         new MainApplication().run();
     }
-
-//    private static String getFileName(String url) {
-//        // Extract file name from the URL
-//        return url.substring(url.lastIndexOf('/') + 1);
-//    }
 }

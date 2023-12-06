@@ -1,45 +1,34 @@
 package co.cstad.dao;
 
+import co.cstad.storage.Storage;
 import co.cstad.util.DbUtil;
-import org.apache.commons.io.comparator.LastModifiedFileComparator;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.Tag;
-
+import co.cstad.util.DownloadSingleton;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.sql.ResultSet;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 public class DownloadDaoImpl implements DownloadDao {
-    public final Connection connection;
+    private final Connection connection;
+    private final Storage storage;
 
     public DownloadDaoImpl() {
         connection = DbUtil.getConnection();
+        storage = DownloadSingleton.storage();
     }
 
     @Override
-    public void save(String mediaUrl, String outputDirectory, String format) throws Exception {
-        String command = "";
-        if(format.equalsIgnoreCase("mp3")) {
-            // mp3
-            command = "yt-dlp.exe -o \"" + outputDirectory + "/%(title)s.%(ext)s\" -f 140 " + mediaUrl;
-        }
+    public void save(String mediaUrl, String outputDirectory) throws Exception {
+        String command = "yt-dlp.exe mp3 -o \"" + outputDirectory + "/%(title)s.%(ext)s\" -f 140 --parse-metadata \"title:%(artist)s - %(title)s\" " + mediaUrl;
 
+        // Process to execute command
         Process process = Runtime.getRuntime().exec(command);
-        Thread.sleep(10000);
+        Thread.sleep(20000);
+
         // Get a list of all files in the directory
         File directory = new File(outputDirectory);
         File[] files = directory.listFiles();
@@ -51,136 +40,160 @@ public class DownloadDaoImpl implements DownloadDao {
             // Get the first element, which represents the last added (or modified) file
             File lastAddedFile = files[0];
 
-            // Now you can read or process the last added file as needed
-            System.out.println("Last added file: " + lastAddedFile.getAbsolutePath());
+            // Get File Title and Extension
+            String fileName = lastAddedFile.getName();
+            int lastDotIndex = fileName.lastIndexOf('.');
+            String fileTitle = (lastDotIndex <= 0) ? fileName : fileName.substring(0, lastDotIndex);
+            String fileExtension = fileName.substring(lastDotIndex + 1).toLowerCase();
+
+            // Check for known music file extensions
+            fileExtension = switch (fileExtension) {
+                case "mp3" -> "mp3";
+                case "wav" -> "wav";
+                case "ogg" -> "ogg";
+                default -> fileExtension;
+            };
+
+            // Insert into medias, media_folders, and downloads in a single transaction
+            try (PreparedStatement mediaStatement = connection.prepareStatement("INSERT INTO medias (title, artists, album, url, media_type, file_format, category_id, user_id, uploaded_at, file_size, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id");
+                 PreparedStatement folderStatement = connection.prepareStatement("INSERT INTO media_folders (name, user_id, folder_id) VALUES (?, ?, ?) RETURNING *");
+                 PreparedStatement downloadStatement = connection.prepareStatement("INSERT INTO downloads (status, is_deleted, media_id, user_id) VALUES (?, ?, ?, ?) RETURNING *")) {
+
+                connection.setAutoCommit(false); // Start a transaction
+
+                // Set parameters for medias table
+                long fileSizeInBytes = lastAddedFile.length();
+                double fileSizeInMB = (double) fileSizeInBytes / (1024 * 1024);
+                mediaStatement.setString(1, fileTitle);
+                mediaStatement.setString(2, null);
+                mediaStatement.setString(3, null);
+                mediaStatement.setString(4, mediaUrl);
+                mediaStatement.setString(5, "Music");
+                mediaStatement.setString(6, fileExtension);
+                mediaStatement.setInt(7, storage.getOption());
+                mediaStatement.setInt(8, storage.getId());
+                mediaStatement.setDate(9, Date.valueOf(LocalDate.now()));
+                mediaStatement.setInt(10, (int) fileSizeInMB);
+                mediaStatement.setString(11, "Download from Youtube");
+
+                // Execute INSERT for medias and get generated ID
+                ResultSet mediaResultSet = mediaStatement.executeQuery();
+                if (mediaResultSet.next()) {
+                    storage.setMediaId(mediaResultSet.getInt("id"));
+                }
+
+                // Set parameters for media_folders
+                folderStatement.setString(1, storage.getOptionFilePath());
+                folderStatement.setInt(2, storage.getId());
+                folderStatement.setInt(3, storage.getOption());
+                folderStatement.executeQuery();
+
+                // Set parameters for downloads
+                downloadStatement.setString(1, "Success");
+                downloadStatement.setBoolean(2, false);
+                downloadStatement.setInt(3, storage.getMediaId());
+                downloadStatement.setInt(4, storage.getId());
+                downloadStatement.executeQuery();
+
+                connection.commit(); // Commit the transaction
+            } catch (Exception e) {
+                connection.rollback(); // Rollback in case of an exception
+                System.out.println(e.getMessage());
+            } finally {
+                connection.setAutoCommit(true); // Reset auto-commit mode
+            }
         } else {
             System.out.println("No files found in the directory.");
         }
-//        Thread.sleep(10000);
-//
-//        Optional<File> latestFile = Stream.of(new File(outputDirectory).listFiles())
-//                .filter(File::isFile)
-//                .max(Comparator.comparingLong(File::lastModified));
-//
-//        if (latestFile.isPresent()) {
-//            File file = findUsingIOApi(outputDirectory);
-//            Path path = file.toPath();
-//
-//            BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class);
-//            Instant creationTime = attributes.creationTime().toInstant();
-//            LocalDateTime dateTime = LocalDateTime.ofInstant(creationTime, ZoneId.systemDefault());
-//
-//            System.out.println("Latest file: " + file.getName());
-//            System.out.println("Creation time: " + dateTime);
-//        } else {
-//            System.out.println("No files found in the folder.");
-//        }
-//        // Create a File object representing the folder
-//        File folder = new File(outputDirectory);
-//        if (folder.exists() && folder.isDirectory()) {
-//            File lastAddedFile = getLastAddedFile(folder);
-//
-//            if (lastAddedFile != null) {
-//                // Process or read the last added file here
-//                try(PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO medias (title, artists, album, url, media_type, file_format, category_id, user_id, uploaded_at, file_size, description) VALUES ('test', 'test', 'test', 'test.com', 'music', 'mp3', 1, 1, '2023-12-01 16:45:16', 3, 'song') RETURNING *")) {
-//                // Read audio file and extract metadata
-//                AudioFile audioFile = AudioFileIO.read(lastAddedFile);
-//                Tag tag = audioFile.getTag();
-//
-//                // Print metadata
-//                System.out.println("File: " + lastAddedFile.getName());
-//                System.out.println("Title: " + tag.getFirst(FieldKey.TITLE));
-//                System.out.println("Artist: " + tag.getFirst(FieldKey.ARTIST));
-//                System.out.println("Album: " + tag.getFirst(FieldKey.ALBUM));
-//                // Add more fields as needed
-//                preparedStatement.executeQuery();
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            } else {
-//                System.out.println("No files found in the folder.");
-//            }
-//        } else {
-//            System.out.println("Invalid folder path.");
-//        }
-//        // List all files in the folder
-//        File[] files = folder.listFiles();
-//
-//        // Sort files by last modified timestamp to get the last file
-//        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-//
-//        if (files.length > 0) {
-//            // Get the last file
-//            File lastFile = files[files.length - 1];
-//            try(PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO medias (title, artists, album, url, media_type, file_format, category_id, user_id, uploaded_at, file_size, description) VALUES ('test', 'test', 'test', 'test.com', 'music', 'mp3', 1, 1, '2023-12-01 16:45:16', 3, 'song') RETURNING *")) {
-//                // Read audio file and extract metadata
-//                AudioFile audioFile = AudioFileIO.read(lastFile);
-//                Tag tag = audioFile.getTag();
-//
-//                // Print metadata
-//                System.out.println("File: " + lastFile.getName());
-//                System.out.println("Title: " + tag.getFirst(FieldKey.TITLE));
-//                System.out.println("Artist: " + tag.getFirst(FieldKey.ARTIST));
-//                System.out.println("Album: " + tag.getFirst(FieldKey.ALBUM));
-//                // Add more fields as needed
-//                preparedStatement.executeQuery();
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//
-//        } else {
-//            System.out.println("No files found in the folder");
-//        }
-//        // Create a File object representing the folder
-//        File folder = new File(outputDirectory);
-//
-//        // List all files in the folder
-//        File[] files = folder.listFiles();
-//
-//        // Sort files by last modified timestamp to get the last file
-//        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-//
-//        if (files.length > 0) {
-//            // Get the last file
-//            File lastFile = files[files.length - 1];
-//
-//            try(PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO medias (title, artists, album, url, media_type, file_format, category_id, user_id, uploaded_at, file_size, description) VALUES ('test', 'test', 'test', 'test.com', 'music', 'mp3', 1, 1, '2023-12-01 16:45:16', 3, 'song')")) {
-//                // Read audio file and extract metadata
-//                AudioFile audioFile = AudioFileIO.read(lastFile);
-//                Tag tag = audioFile.getTag();
-//
-//                // Print metadata
-//                System.out.println("File: " + lastFile.getName());
-//                System.out.println("Title: " + tag.getFirst(FieldKey.TITLE));
-//                System.out.println("Artist: " + tag.getFirst(FieldKey.ARTIST));
-//                System.out.println("Album: " + tag.getFirst(FieldKey.ALBUM));
-//                // Add more fields as needed
-//                preparedStatement.executeQuery();
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//
-//        } else {
-//            System.out.println("No files found in the folder");
-//        }
     }
-    public static Path findUsingNIOApi(String sdir) throws IOException {
-        Path dir = Paths.get(sdir);
-        if (Files.isDirectory(dir)) {
-            Optional<Path> opPath = Files.list(dir)
-                    .filter(p -> !Files.isDirectory(p))
-                    .sorted((p1, p2)-> Long.valueOf(p2.toFile().lastModified())
-                            .compareTo(p1.toFile().lastModified()))
-                    .findFirst();
 
-            if (opPath.isPresent()){
-                return opPath.get();
-            }
-        }
-
-        return null;
-    }
+//    public void save(String mediaUrl, String outputDirectory) throws Exception {
+//        String command = "yt-dlp.exe mp3 -o \"" + outputDirectory + "/%(title)s.%(ext)s\" -f 140 --parse-metadata \"title:%(artist)s - %(title)s\" " + mediaUrl;
+//
+//        // Process to execute command
+//        Process process = Runtime.getRuntime().exec(command);
+//        Thread.sleep(20000);
+//
+//        // Get a list of all files in the directory
+//        File directory = new File(outputDirectory);
+//        File[] files = directory.listFiles();
+//
+//        if (files != null && files.length > 0) {
+//            // Sort the files based on the last modified timestamp in descending order
+//            Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+//
+//            // Get the first element, which represents the last added (or modified) file
+//            File lastAddedFile = files[0];
+//
+//            // Get File Title
+//            String fileName = lastAddedFile.getName();
+//
+//            // Get the index of the last dot to find the position of the file extension
+//            int lastDotIndex = fileName.lastIndexOf('.');
+//
+//            // If there is no dot or the dot is at the beginning of the file name, return the entire name
+//            String fileTitle = (lastDotIndex <= 0) ? fileName : fileName.substring(0, lastDotIndex);
+//            // Get File Extension
+//            String fileExtensionName = lastAddedFile.getName();
+//            int lastDotIndex1 = fileExtensionName.lastIndexOf('.');
+//            String fileExtension = fileExtensionName.substring(lastDotIndex1 + 1).toLowerCase();
+//
+//            // Check for known music file extensions
+//            fileExtension = switch (fileExtension) {
+//                case "mp3" -> "mp3";
+//                case "wav" -> "wav";
+//                case "ogg" -> "ogg";
+//                default -> fileExtension;
+//            };
+//            try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO medias (title, artists, album, url, media_type, file_format, category_id, user_id, uploaded_at, file_size, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id")) {
+//                long fileSizeInBytes = lastAddedFile.length();
+//                double fileSizeInMB = (double) fileSizeInBytes / (1024 * 1024);
+//
+//                preparedStatement.setString(1, fileTitle);
+//                preparedStatement.setString(2, null);
+//                preparedStatement.setString(3, null);
+//                preparedStatement.setString(4, mediaUrl);
+//                preparedStatement.setString(5, "Music");
+//                preparedStatement.setString(6, fileExtension);
+//                preparedStatement.setInt(7, storage.getOption());
+//                preparedStatement.setInt(8, storage.getId());
+//                preparedStatement.setDate(9, Date.valueOf(LocalDate.now()));
+//                preparedStatement.setInt(10, (int) fileSizeInMB);
+//                preparedStatement.setString(11, "Download from Youtube");
+//
+//                preparedStatement.executeQuery();
+//
+//                ResultSet resultSet = preparedStatement.executeQuery();
+//                if(resultSet.next()) {
+//                    storage.setMediaId(resultSet.getInt("id"));
+//                }
+//
+//            } catch (Exception e) {
+//                System.out.println(e.getMessage());
+//            }
+//
+//            try(PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO media_folders (name, user_id, folder_id) VALUES (?, ?, ?) RETURNING *")) {
+//                preparedStatement.setString(1, storage.getOptionFilePath());
+//                preparedStatement.setInt(2, storage.getId());
+//                preparedStatement.setInt(3, storage.getOption());
+//                preparedStatement.executeQuery();
+//            } catch (Exception e) {
+//                System.out.println(e.getMessage());
+//            }
+//
+//            try(PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO downloads (status, is_deleted, media_id, user_id) VALUES (?, ?, ?, ?) RETURNING *")) {
+//                preparedStatement.setString(1, "Success");
+//                preparedStatement.setBoolean(2, false);
+//                preparedStatement.setInt(3, storage.getMediaId());
+//                preparedStatement.setInt(4, storage.getId());
+//
+//
+//                preparedStatement.executeQuery();
+//            } catch (Exception e) {
+//                System.out.println(e.getMessage());
+//            }
+//        } else {
+//            System.out.println("No files found in the directory.");
+//        }
+//    }
 }

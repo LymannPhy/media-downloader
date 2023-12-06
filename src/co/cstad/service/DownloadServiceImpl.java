@@ -10,7 +10,7 @@ public class DownloadServiceImpl implements DownloadService {
         downloadDao = new DownloadDaoImpl();
     }
     @Override
-    public void downloadMedia(String mediaUrl, String outputDirectory, String format) throws Exception {
-        downloadDao.save(mediaUrl, outputDirectory, format);
+    public void downloadMedia(String mediaUrl, String outputDirectory) throws Exception {
+        downloadDao.save(mediaUrl, outputDirectory);
     }
 }

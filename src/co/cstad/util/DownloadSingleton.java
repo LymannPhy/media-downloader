@@ -19,6 +19,7 @@ public class DownloadSingleton {
     private static MenuController menuController;
     private static UserServiceImpl userServiceImpl;
     private static CategorySeeder categorySeeder;
+    private static FolderSeeder folderSeeder;
     private static UserView userView;
     private static MenuView menuView;
     private static Storage storage;
@@ -48,6 +49,13 @@ public class DownloadSingleton {
             categorySeeder = new CategorySeeder();
         }
         return categorySeeder;
+    }
+
+    public static FolderSeeder folderSeeder() {
+        if(folderSeeder == null) {
+            folderSeeder = new FolderSeeder();
+        }
+        return folderSeeder;
     }
 
     public static DownloadServiceImpl downloadServiceImpl() {

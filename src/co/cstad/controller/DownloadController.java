@@ -9,7 +9,7 @@ public class DownloadController {
     public DownloadController() {
         downloadService = new DownloadServiceImpl();
     }
-    public void downloadMedia(String mediaUrl, String outputDirectory, String format) throws Exception {
-        downloadService.downloadMedia(mediaUrl, outputDirectory, format);
+    public void downloadMedia(String mediaUrl, String outputDirectory) throws Exception {
+        downloadService.downloadMedia(mediaUrl, outputDirectory);
     }
 }

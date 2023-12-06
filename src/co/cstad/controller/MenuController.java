@@ -3,14 +3,8 @@ package co.cstad.controller;
 import co.cstad.storage.Storage;
 import co.cstad.util.DbUtil;
 import co.cstad.util.DownloadSingleton;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.Tag;
-
 import java.io.File;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -28,12 +22,10 @@ public class MenuController {
     List<String> mediaUrls = new ArrayList<>();
     String outputDirectory = "";
     public void option(String options) {
-        boolean isDownload = false;
         switch (options) {
             case "d" -> {
                 Scanner scanner = new Scanner(System.in);
                 String option;
-                System.out.println(storage.getId());
                 int concurrentDownloads = 1;
                 // Prompt the user for the YouTube video URL
                 for(int i = 0; i < concurrentDownloads; i++) {
@@ -46,11 +38,11 @@ public class MenuController {
                         System.out.print("Enter the output directory option: ");
                         option = scanner.nextLine();
                     } while (!isInteger(option));
-                    System.out.println(url);
                     switch (Integer.parseInt(option)) {
                         case 1 -> {
-                            System.out.println(option);
+                            storage.setOption(Integer.parseInt(option));
                             String popDirectory = System.getProperty("user.home") + File.separatorChar + "Music\\EasyMp3\\Pop";
+                            storage.setOptionFilePath(popDirectory);
                             File directory = new File(popDirectory);
                             if(!directory.exists()) {
                                 directory.mkdir();
@@ -61,7 +53,9 @@ public class MenuController {
                         }
 
                         case 2 -> {
+                            storage.setOption(Integer.parseInt(option));
                             String rockDirectory = System.getProperty("user.home") + File.separatorChar + "Music\\EasyMp3\\Rock";
+                            storage.setOptionFilePath(rockDirectory);
                             File directory = new File(rockDirectory);
                             if(!directory.exists()) {
                                 directory.mkdir();
@@ -72,7 +66,9 @@ public class MenuController {
                         }
 
                         case 3 -> {
+                            storage.setOption(Integer.parseInt(option));
                             String gameDirectory = System.getProperty("user.home") + File.separatorChar + "Music\\EasyMp3\\Game";
+                            storage.setOptionFilePath(gameDirectory);
                             File directory = new File(gameDirectory);
                             if(!directory.exists()) {
                                 directory.mkdir();
@@ -85,14 +81,13 @@ public class MenuController {
                     mediaUrls.add(url);
 
                 }
-                String format = "mp3";
 
                 // Concurrency
                 ExecutorService executorService = Executors.newFixedThreadPool(concurrentDownloads);
                 List<Future<Void>> futures = new ArrayList<>();
                 for (String mediaUrl : mediaUrls) {
                     Callable<Void> downloadTask = () -> {
-                        downloadController.downloadMedia(mediaUrl, outputDirectory, format);
+                        downloadController.downloadMedia(mediaUrl, outputDirectory);
                         return null;
                     };
                     Future<Void> future = executorService.submit(downloadTask);
